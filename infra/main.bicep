@@ -1,7 +1,40 @@
+// targetScope = 'subscription'
+// param location string
+// resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
+//   name: 'km-rg-${suffix}'
+//   location: location
+// }
+
+var rg = resourceGroup()
+var location = resourceGroup().location
+
 @description('Suffix to create unique resource names; 4-6 characters. Default is a random 6 characters.')
 @minLength(4)
 @maxLength(6)
 param suffix string = substring(newGuid(), 0, 6)
+
+@description('Pick a vector storage.')
+@allowed([
+  'Azure AI Search'
+  'Azure AI Search with Semantic Search enabled'
+  'Azure Database for PostgreSQL'
+])
+param vectorDBParam string = 'Azure AI Search'
+
+var vectorDB = (vectorDBParam == 'Azure AI Search')
+  ? {
+      name: 'Azure AI Search'
+      type: 'AzureAISearch'
+    }
+  : (vectorDBParam == 'Azure AI Search Semantic Search enabled')
+      ? {
+          name: 'Azure AI Search with Semantic Search enabled'
+          type: 'AzureAISearchSemantic Search'
+        }
+      : {
+          name: 'Azure Database for PostgreSQL'
+          type: 'Postgres'
+        }
 
 @description('''
 gpt-35-turbo-16k deployment model\'s Tokens-Per-Minute (TPM) capacity, measured in thousands.
@@ -40,10 +73,6 @@ The value is stored as an environment variable and is required by the web servic
 @maxLength(128)
 @secure()
 param WebServiceAuthorizationKey2 string
-
-var rg = resourceGroup()
-
-var location = resourceGroup().location
 
 var chatGpt = {
   modelName: 'gpt-35-turbo-16k'
@@ -93,7 +122,7 @@ var openAiDeployments = [
   The managed identity is the main code-to-services and service-to-service authentication mechanism.
 */
 module managedidentity 'modules/managed-identity.bicep' = {
-  name: 'managedidentity-${suffix}'
+  name: 'km-module-managedidentity-${suffix}'
   scope: rg
   params: {
     location: location
@@ -109,7 +138,7 @@ module managedidentity 'modules/managed-identity.bicep' = {
   to run asynchronous ingestion (KM Pipelines Orchestration).
 */
 module storage 'modules/storage.bicep' = {
-  name: 'storage-${suffix}'
+  name: 'km-module-storage-${suffix}'
   scope: rg
   params: {
     location: location
@@ -125,16 +154,46 @@ module storage 'modules/storage.bicep' = {
   Azure AI Search is used to store document chunks and LLM embeddings, and to search
   for relevant data when searching memories and asking questions.
 */
-module search 'modules/ai-search.bicep' = {
-  name: 'search-${suffix}'
-  scope: rg
-  params: {
-    location: location
-    name: 'km-search-${suffix}'
-    suffix: suffix
-    managedIdentityPrincipalId: managedidentity.outputs.managedIdentityPrincipalId
+module search 'modules/ai-search.bicep' =
+  if (vectorDB.type == 'AzureAISearch') {
+    name: 'km-module-aisearch-${suffix}'
+    scope: rg
+    params: {
+      location: location
+      name: 'km-search-${suffix}'
+      suffix: suffix
+      managedIdentityPrincipalId: managedidentity.outputs.managedIdentityPrincipalId
+    }
   }
-}
+
+/*
+  Module to create a Postgres DB
+  See https://learn.microsoft.com/azure/postgresql/flexible-server/quickstart-create-server-bicep?tabs=CLI
+  
+  Postgres DB is used to store document chunks and LLM embeddings, and to search
+  for relevant data when searching memories and asking questions.
+*/
+
+var administratorLogin = 'kmadmin'
+var administratorLoginPassword = guid('postgres', suffix, rg.id)
+
+module postgres 'modules/postgreSQL.bicep' =
+  if (vectorDB.type == 'Postgres') {
+    name: 'km-module-postgres-${suffix}'
+    scope: rg
+    params: {
+      location: location
+      // suffix: suffix
+      // managedIdentityPrincipalId: managedidentity.outputs.managedIdentityPrincipalId
+      serverName: 'km-postgres-${suffix}'
+
+      administratorLogin: administratorLogin
+      administratorLoginPassword: administratorLoginPassword
+      managedIdentityTenantId: managedidentity.outputs.managedIdentityTenantId
+      managedIdentityPrincipalName: managedidentity.outputs.managedIdentityPrincipalName
+      managedIdentityPrincipalId: managedidentity.outputs.managedIdentityPrincipalId
+    }
+  }
 
 /*
   Module to create a Azure OpenAI service
@@ -144,7 +203,7 @@ module search 'modules/ai-search.bicep' = {
   Azure OpenAI is used to generate text embeddings, and to generate text from memories (answers and summaries)
 */
 module openAi 'modules/cognitive-services-openAI.bicep' = {
-  name: 'openai-${suffix}'
+  name: 'km-module-openai-${suffix}'
   scope: rg
   params: {
     suffix: suffix
@@ -164,7 +223,7 @@ module openAi 'modules/cognitive-services-openAI.bicep' = {
   Azure Document Intelligence is used to extract text from images
 */
 module docIntel 'modules/cognitive-services-docIntel.bicep' = {
-  name: 'docIntel-${suffix}'
+  name: 'km-module-docIntel-${suffix}'
   scope: rg
   params: {
     suffix: suffix
@@ -183,7 +242,7 @@ module docIntel 'modules/cognitive-services-docIntel.bicep' = {
       and https://azure.github.io/aca-dotnet-workshop/aca/10-aca-iac-bicep/iac-bicep/#2-define-an-azure-container-apps-environment for more samples
 */
 module containerAppsEnvironment 'modules/container-apps-environment.bicep' = {
-  name: 'containerAppsEnvironment-${suffix}'
+  name: 'km-module-containerAppsEnvironment-${suffix}'
   scope: rg
   params: {
     location: location
@@ -198,7 +257,7 @@ module containerAppsEnvironment 'modules/container-apps-environment.bicep' = {
   The Azure Container app hosts the docker container containing KM web service.
 */
 module containerAppService 'modules/container-app.bicep' = {
-  name: 'containerAppService-${suffix}'
+  name: 'km-module-containerAppService-${suffix}'
   scope: rg
   params: {
     location: location

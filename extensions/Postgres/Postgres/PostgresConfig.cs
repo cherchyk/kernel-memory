@@ -1,7 +1,11 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
-
+using System.Text.Json.Serialization;
 using System;
 using System.Collections.Generic;
+using Azure.Identity;
+using Microsoft.KernelMemory.Postgres;
+using Microsoft.Extensions.Logging;
+using Microsoft.KernelMemory.Diagnostics;
 
 #pragma warning disable IDE0130 // reduce number of "using" statements
 // ReSharper disable once CheckNamespace - reduce number of "using" statements
@@ -12,6 +16,9 @@ namespace Microsoft.KernelMemory;
 /// </summary>
 public class PostgresConfig
 {
+
+    private readonly ILogger<PostgresConfig> _log;
+
     /// <summary>
     /// Key for the Columns dictionary
     /// </summary>
@@ -38,6 +45,11 @@ public class PostgresConfig
     public const string ColumnPayload = "payload";
 
     /// <summary>
+    /// Name of the default database
+    /// </summary>
+    public const string DefaultDatabase = "postgres";
+
+    /// <summary>
     /// Name of the default schema
     /// </summary>
     public const string DefaultSchema = "public";
@@ -48,9 +60,59 @@ public class PostgresConfig
     public const string DefaultTableNamePrefix = "km-";
 
     /// <summary>
-    /// Connection string required to connect to Postgres
+    /// Authentication types for connecting to Postgres.
+    /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public enum AuthTypes
+    {
+        // /// <summary>
+        // /// Unknown authentication type.
+        // /// </summary>
+        // Unknown = -1,
+
+        /// <summary>
+        /// Managed Identity authentication type.
+        /// </summary>
+        AzureIdentity,
+
+        /// <summary>
+        /// ConnectionString based authentication type.
+        /// </summary>
+        ConnectionString
+    }
+
+    /// <summary>
+    /// Authentication type for connecting to Postgres. Default is ConnectionString.
+    /// </summary>
+    public AuthTypes Auth { get; set; } = AuthTypes.ConnectionString;
+
+
+    /// <summary>
+    /// Connection string to connect to Postgres
     /// </summary>
     public string ConnectionString { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Host to connect to Postgres. Used with AuthTypes=AzureIdentity. Reduntant with AuthTypes=ConnectionString
+    /// </summary>
+    public string Host { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Port to connect to Postgres. Used with AuthTypes=AzureIdentity. Reduntant with AuthTypes=ConnectionString
+    /// </summary>
+    public int Port { get; set; } = 0;
+
+    /// <summary>
+    /// UserName to connect to Postgres. Used with AuthTypes=AzureIdentity. Reduntant with AuthTypes=ConnectionString
+    /// </summary>
+    public string UserName { get; set; } = string.Empty;
+
+
+    /// <summary>
+    /// Name of the database where to read and write records.
+    /// </summary>
+    public string Database { get; set; } = DefaultDatabase;
+
 
     /// <summary>
     /// Name of the schema where to read and write records.
@@ -107,11 +169,15 @@ public class PostgresConfig
     /// </summary>
     public List<string> CreateTableSql { get; set; } = new();
 
+    private static readonly string[] s_tokenRequestScopes = new string[] { "https://ossrdbms-aad.database.windows.net/.default" };
+
     /// <summary>
     /// Create a new instance of the configuration
     /// </summary>
     public PostgresConfig()
     {
+        this._log = DefaultLogger<PostgresConfig>.Instance;
+
         this.Columns = new Dictionary<string, string>
         {
             [ColumnId] = "id",
@@ -122,6 +188,56 @@ public class PostgresConfig
         };
     }
 
+    private string BuildConnectinStringUsingManagedIdentity()
+    {
+        // https://learn.microsoft.com/azure/postgresql/flexible-server/how-to-connect-with-managed-identity
+
+        this._log.LogCritical("Entering BuildConnectinStringUsingManagedIdentityAuthType.");
+        try
+        {
+            // Call managed identities for Azure resources endpoint.
+            var tokenProvider = new DefaultAzureCredential();
+            string accessToken = (tokenProvider.GetToken(
+                new Azure.Core.TokenRequestContext(scopes: s_tokenRequestScopes) { })).Token;
+
+
+            string connString =
+        $"Server={this.Host}; User Id={this.UserName}; Database={this.Database}; Port={this.Port}; Password={accessToken}; SSLMode=Prefer";
+
+            this._log.LogCritical($"connString is {connString}");
+
+            return connString;
+        }
+        catch (Exception e)
+        {
+            throw new PostgresException($"{e.Message} \n\n{(e.InnerException != null ? e.InnerException.Message : "Acquire token failed")}");
+        }
+    }
+
+    /// <summary>
+    /// Gets the connection string based on the authentication type.
+    /// </summary>
+    public string GetConnectionStringByAuth()
+    {
+        this._log.LogCritical("Postgres: AuthType is {Auth}.");
+
+        if (this.Auth == AuthTypes.ConnectionString)
+        {
+            return this.ConnectionString;
+        }
+
+        if (this.Auth == AuthTypes.AzureIdentity)
+        {
+            this._log.LogCritical("Postgres: AuthType is {Auth}.");
+            return this.BuildConnectinStringUsingManagedIdentity();
+        }
+
+        throw new ConfigurationException("Postgres: unknown authentication type.");
+    }
+
+
+
+
     /// <summary>
     /// Verify that the current state is valid.
     /// </summary>
@@ -131,9 +247,47 @@ public class PostgresConfig
         this.TableNamePrefix = this.TableNamePrefix?.Trim() ?? string.Empty;
         this.ConnectionString = this.ConnectionString?.Trim() ?? string.Empty;
 
-        if (string.IsNullOrWhiteSpace(this.ConnectionString))
+        if (this.Auth == AuthTypes.ConnectionString)
         {
-            throw new ConfigurationException($"Postgres: {nameof(this.ConnectionString)} is empty.");
+            if (string.IsNullOrWhiteSpace(this.ConnectionString))
+            {
+                throw new ConfigurationException($"Postgres: {nameof(this.ConnectionString)} is empty.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(this.Host))
+            {
+                throw new ConfigurationException($"Postgres: {nameof(this.Host)} should not be used when {nameof(this.Auth)} is 'ConnectionString'.");
+            }
+            if (this.Port > 0)
+            {
+                throw new ConfigurationException($"Postgres: {nameof(this.Port)} should not be used when {nameof(this.Auth)} is 'ConnectionString'.");
+            }
+            if (!string.IsNullOrWhiteSpace(this.UserName))
+            {
+                throw new ConfigurationException($"Postgres: {nameof(this.UserName)} should not be used when {nameof(this.Auth)} is 'ConnectionString'.");
+            }
+
+        }
+
+        if (this.Auth == AuthTypes.AzureIdentity)
+        {
+            if (!string.IsNullOrWhiteSpace(this.ConnectionString))
+            {
+                throw new ConfigurationException($"Postgres: {nameof(this.ConnectionString)} should not be used when {nameof(this.Auth)} is 'AzureIdentity'.");
+            }
+
+            if (string.IsNullOrWhiteSpace(this.Host))
+            {
+                throw new ConfigurationException($"Postgres: {nameof(this.Host)} is empty.");
+            }
+            if (this.Port < 1)
+            {
+                throw new ConfigurationException($"Postgres: {nameof(this.Port)} is empty.");
+            }
+            if (string.IsNullOrWhiteSpace(this.UserName))
+            {
+                throw new ConfigurationException($"Postgres: {nameof(this.UserName)} is empty.");
+            }
         }
 
         if (string.IsNullOrWhiteSpace(this.TableNamePrefix))

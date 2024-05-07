@@ -29,3 +29,5 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 output managedIdentityId string = managedIdentity.id
 output managedIdentityPrincipalId string = managedIdentity.properties.principalId
 output managedIdentityClientId string = managedIdentity.properties.clientId
+output managedIdentityTenantId string = managedIdentity.properties.tenantId
+output managedIdentityPrincipalName string = managedIdentity.name

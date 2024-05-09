@@ -79,6 +79,9 @@ resource serverName_resource 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-
   }
 
   resource serverFirewallRule 'firewallRules' = {
+    dependsOn: [
+      administrator
+    ]
     name: 'AllowAllAzureServicesAndResourcesWithinAzureIps'
     properties: {
       startIpAddress: '0.0.0.0'
@@ -86,13 +89,16 @@ resource serverName_resource 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-
     }
   }
 
-  // resource Extension 'configurations' = {
-  //   name: 'azure.extensions'
-  //   properties: {
-  //     value: 'VECTOR'
-  //     source: 'user-override'
-  //   }
-  // }
+  resource Extension 'configurations' = {
+    dependsOn: [
+      serverFirewallRule
+    ]
+    name: 'azure.extensions'
+    properties: {
+      value: 'VECTOR'
+      source: 'user-override'
+    }
+  }
 }
 
 // resource PostgreSQLExtention 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2023-06-01-preview' = {

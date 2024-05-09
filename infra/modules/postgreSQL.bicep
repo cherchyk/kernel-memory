@@ -79,10 +79,20 @@ resource serverName_resource 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-
   }
 
   resource serverFirewallRule 'firewallRules' = {
-    name: 'AllowAllWindowsAzureIps'
+    name: 'AllowAllAzureServicesAndResourcesWithinAzureIps' // AllowAllWindowsAzureIps
     properties: {
       startIpAddress: '0.0.0.0'
       endIpAddress: '0.0.0.0'
+    }
+  }
+
+  // enabling vector extension
+  // enabling extension
+  resource Extension 'configurations' = {
+    name: 'azure.extensions'
+    properties: {
+      value: 'VECTOR'
+      source: 'user-override'
     }
   }
 }

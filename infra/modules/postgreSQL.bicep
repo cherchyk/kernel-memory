@@ -77,6 +77,14 @@ resource serverName_resource 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-
       tenantId: managedIdentityTenantId
     }
   }
+
+  resource serverFirewallRule 'firewallRules' = {
+    name: 'AllowAllWindowsAzureIps'
+    properties: {
+      startIpAddress: '0.0.0.0'
+      endIpAddress: '0.0.0.0'
+    }
+  }
 }
 
 output PostgreSQLHost string = serverName_resource.properties.fullyQualifiedDomainName

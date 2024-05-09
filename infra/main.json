@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.27.1.19265",
-      "templateHash": "10793940270818519123"
+      "templateHash": "4198979297304554089"
     }
   },
   "parameters": {
@@ -631,7 +631,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.27.1.19265",
-              "templateHash": "13604973308207908299"
+              "templateHash": "13157121671808504317"
             }
           },
           "parameters": {
@@ -719,6 +719,18 @@
                 "principalType": "ServicePrincipal",
                 "principalName": "[parameters('managedIdentityPrincipalName')]",
                 "tenantId": "[parameters('managedIdentityTenantId')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
+              "apiVersion": "2023-06-01-preview",
+              "name": "[format('{0}/{1}', parameters('serverName'), 'AllowAllWindowsAzureIps')]",
+              "properties": {
+                "startIpAddress": "0.0.0.0",
+                "endIpAddress": "0.0.0.0"
               },
               "dependsOn": [
                 "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName'))]"

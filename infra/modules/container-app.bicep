@@ -86,11 +86,6 @@ var EnvVar = [
     name: 'KernelMemory__DataIngestion__EmbeddingGeneratorTypes__0'
     value: 'AzureOpenAIEmbedding'
   }
-  // ///////////////////
-  // {
-  //   name: 'KernelMemory__DataIngestion__MemoryDbTypes__0'
-  //   value: 'AzureAISearch'
-  // }
   {
     name: 'KernelMemory__DataIngestion__ImageOcrType'
     value: 'AzureAIDocIntel'
@@ -99,11 +94,6 @@ var EnvVar = [
     name: 'KernelMemory__Retrieval__EmbeddingGeneratorType'
     value: 'AzureOpenAIEmbedding'
   }
-  // ///////////////////
-  // {
-  //   name: 'KernelMemory__Retrieval__MemoryDbType'
-  //   value: 'AzureAISearch'
-  // }
   {
     name: 'KernelMemory__Services__AzureBlobs__Account'
     value: AzureBlobs_Account
@@ -116,11 +106,6 @@ var EnvVar = [
     name: 'KernelMemory__Services__AzureQueues__QueueName'
     value: AzureQueues_QueueName
   }
-  //////////////////////////
-  // {
-  //   name: 'KernelMemory__Services__AzureAISearch__Endpoint'
-  //   value: AzureAISearch_Endpoint
-  // }
   {
     name: 'KernelMemory__Services__AzureOpenAIText__Endpoint'
     value: AzureOpenAIText_Endpoint

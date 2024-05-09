@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.27.1.19265",
-      "templateHash": "14348608102304577009"
+      "templateHash": "10793940270818519123"
     }
   },
   "parameters": {
@@ -1559,12 +1559,12 @@
         }
       },
       "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', format('km-module-aisearch-{0}', parameters('suffix')))]",
         "[resourceId('Microsoft.Resources/deployments', format('km-module-containerAppsEnvironment-{0}', parameters('suffix')))]",
         "[resourceId('Microsoft.Resources/deployments', format('km-module-docIntel-{0}', parameters('suffix')))]",
         "[resourceId('Microsoft.Resources/deployments', format('km-module-managedidentity-{0}', parameters('suffix')))]",
         "[resourceId('Microsoft.Resources/deployments', format('km-module-openai-{0}', parameters('suffix')))]",
         "[resourceId('Microsoft.Resources/deployments', format('km-module-postgres-{0}', parameters('suffix')))]",
-        "[resourceId('Microsoft.Resources/deployments', format('km-module-aisearch-{0}', parameters('suffix')))]",
         "[resourceId('Microsoft.Resources/deployments', format('km-module-storage-{0}', parameters('suffix')))]"
       ]
     }

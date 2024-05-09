@@ -14,9 +14,9 @@ var location = resourceGroup().location
 param suffix string = substring(newGuid(), 0, 6)
 
 @description('Pick a vector storage.')
+// 'Azure AI Search with Semantic Search enabled'
 @allowed([
   'Azure AI Search'
-  // 'Azure AI Search with Semantic Search enabled'
   'Azure Database for PostgreSQL'
 ])
 param vectorDBParam string
@@ -143,7 +143,7 @@ module storage 'modules/storage.bicep' = {
   Azure AI Search is used to store document chunks and LLM embeddings, and to search
   for relevant data when searching memories and asking questions.
 */
-module search 'modules/ai-search.bicep' =
+module aisearch 'modules/ai-search.bicep' =
   if (vectorDB == 'AzureAISearch') {
     name: 'km-module-aisearch-${suffix}'
     scope: rg
@@ -196,7 +196,7 @@ var VectorDBEnvVar = (vectorDB == 'AzureAISearch')
       }
       {
         name: 'KernelMemory__Services__AzureAISearch__Endpoint'
-        value: 'https://${search.outputs.searchName }.search.windows.net'
+        value: 'https://${aisearch.outputs.searchName }.search.windows.net'
       }
     ]
   : [

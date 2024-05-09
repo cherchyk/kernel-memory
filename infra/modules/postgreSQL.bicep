@@ -95,16 +95,16 @@ resource serverName_resource 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-
   // }
 }
 
-resource PostgreSQLExtention 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2023-06-01-preview' = {
-  parent: serverName_resource
-  dependsOn: [
-    serverName_resource
-  ]
-  name: concat(serverName, '/azure.extensions')
-  properties: {
-    value: 'VECTOR'
-    source: 'user-override'
-  }
-}
+// resource PostgreSQLExtention 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2023-06-01-preview' = {
+//   parent: serverName_resource
+//   dependsOn: [
+//     serverName_resource
+//   ]
+//   name: concat(serverName, '/azure.extensions')
+//   properties: {
+//     value: 'VECTOR'
+//     source: 'user-override'
+//   }
+// }
 
 output PostgreSQLHost string = serverName_resource.properties.fullyQualifiedDomainName

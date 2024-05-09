@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.27.1.19265",
-      "templateHash": "17226623694148191532"
+      "templateHash": "2029794800488218310"
     }
   },
   "parameters": {
@@ -631,7 +631,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.27.1.19265",
-              "templateHash": "11952857769909387643"
+              "templateHash": "14855777804059208498"
             }
           },
           "parameters": {
@@ -770,18 +770,6 @@
                   "passwordAuth": "Enabled"
                 }
               }
-            },
-            {
-              "type": "Microsoft.DBforPostgreSQL/flexibleServers/configurations",
-              "apiVersion": "2023-06-01-preview",
-              "name": "[format('{0}/{1}', parameters('serverName'), concat(parameters('serverName'), '/azure.extensions'))]",
-              "properties": {
-                "value": "VECTOR",
-                "source": "user-override"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName'))]"
-              ]
             }
           ],
           "outputs": {

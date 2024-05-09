@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.27.1.19265",
-      "templateHash": "11998270474271699877"
+      "templateHash": "17226623694148191532"
     }
   },
   "parameters": {
@@ -631,7 +631,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.27.1.19265",
-              "templateHash": "7425059017831709777"
+              "templateHash": "11952857769909387643"
             }
           },
           "parameters": {
@@ -772,7 +772,7 @@
               }
             },
             {
-              "type": "Microsoft.DBforPostgreSQL/flexibleServers/extensions",
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers/configurations",
               "apiVersion": "2023-06-01-preview",
               "name": "[format('{0}/{1}', parameters('serverName'), concat(parameters('serverName'), '/azure.extensions'))]",
               "properties": {

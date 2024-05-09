@@ -95,7 +95,7 @@ resource serverName_resource 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-
   // }
 }
 
-resource PostgreSQLExtention 'Microsoft.DBforPostgreSQL/flexibleServers/extensions@2023-06-01-preview' = {
+resource PostgreSQLExtention 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2023-06-01-preview' = {
   parent: serverName_resource
   dependsOn: [
     serverName_resource

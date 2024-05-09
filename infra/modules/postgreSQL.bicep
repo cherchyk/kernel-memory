@@ -86,12 +86,24 @@ resource serverName_resource 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-
     }
   }
 
-  resource Extension 'configurations' = {
-    name: 'azure.extensions'
-    properties: {
-      value: 'VECTOR'
-      source: 'user-override'
-    }
+  // resource Extension 'configurations' = {
+  //   name: 'azure.extensions'
+  //   properties: {
+  //     value: 'VECTOR'
+  //     source: 'user-override'
+  //   }
+  // }
+}
+
+resource PostgreSQLExtention 'Microsoft.DBforPostgreSQL/flexibleServers/extensions@2023-06-01-preview' = {
+  parent: serverName_resource
+  dependsOn: [
+    serverName_resource
+  ]
+  name: 'azure.extensions'
+  properties: {
+    value: 'VECTOR'
+    source: 'user-override'
   }
 }
 

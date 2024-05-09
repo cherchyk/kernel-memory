@@ -306,8 +306,6 @@ module containerAppService 'modules/container-app.bicep' = {
     KernelMemory__ServiceAuthorization__AccessKey1: WebServiceAuthorizationKey1
     KernelMemory__ServiceAuthorization__AccessKey2: WebServiceAuthorizationKey2
 
-    //AzureAISearch_Endpoint: 'https://${search.outputs.searchName }.search.windows.net' ///////////////
-
     AzureBlobs_Account: storage.outputs.storageAccountName
     AzureQueues_Account: storage.outputs.storageAccountName
     AzureQueues_QueueName: storage.outputs.queueName

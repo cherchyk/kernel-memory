@@ -100,7 +100,7 @@ resource PostgreSQLExtention 'Microsoft.DBforPostgreSQL/flexibleServers/extensio
   dependsOn: [
     serverName_resource
   ]
-  name: 'azure.extensions'
+  name: concat(serverName, '/azure.extensions')
   properties: {
     value: 'VECTOR'
     source: 'user-override'

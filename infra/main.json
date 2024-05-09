@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.26.170.59819",
-      "templateHash": "4537119516999832789"
+      "version": "0.27.1.19265",
+      "templateHash": "14348608102304577009"
     }
   },
   "parameters": {
@@ -20,10 +20,8 @@
     },
     "vectorDBParam": {
       "type": "string",
-      "defaultValue": "Azure AI Search",
       "allowedValues": [
         "Azure AI Search",
-        "Azure AI Search with Semantic Search enabled",
         "Azure Database for PostgreSQL"
       ],
       "metadata": {
@@ -68,7 +66,7 @@
   "variables": {
     "rg": "[resourceGroup()]",
     "location": "[resourceGroup().location]",
-    "vectorDB": "[if(equals(parameters('vectorDBParam'), 'Azure AI Search'), createObject('name', 'Azure AI Search', 'type', 'AzureAISearch'), if(equals(parameters('vectorDBParam'), 'Azure AI Search Semantic Search enabled'), createObject('name', 'Azure AI Search with Semantic Search enabled', 'type', 'AzureAISearchSemantic Search'), createObject('name', 'Azure Database for PostgreSQL', 'type', 'Postgres')))]",
+    "vectorDB": "[if(equals(parameters('vectorDBParam'), 'Azure AI Search'), 'AzureAISearch', if(equals(parameters('vectorDBParam'), 'Azure AI Search Semantic Search enabled'), 'AzureAISearchSemantic Search', 'Postgres'))]",
     "chatGpt": {
       "modelName": "gpt-35-turbo-16k",
       "deploymentName": "chat",
@@ -134,8 +132,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.26.170.59819",
-              "templateHash": "17745484740488490107"
+              "version": "0.27.1.19265",
+              "templateHash": "11800269207833933154"
             }
           },
           "parameters": {
@@ -232,8 +230,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.26.170.59819",
-              "templateHash": "6577135357063255350"
+              "version": "0.27.1.19265",
+              "templateHash": "13383039933843522620"
             }
           },
           "parameters": {
@@ -426,7 +424,7 @@
       ]
     },
     {
-      "condition": "[equals(variables('vectorDB').type, 'AzureAISearch')]",
+      "condition": "[equals(variables('vectorDB'), 'AzureAISearch')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "[format('km-module-aisearch-{0}', parameters('suffix'))]",
@@ -455,8 +453,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.26.170.59819",
-              "templateHash": "16481486745226370443"
+              "version": "0.27.1.19265",
+              "templateHash": "9050966415018959535"
             }
           },
           "parameters": {
@@ -594,7 +592,7 @@
       ]
     },
     {
-      "condition": "[equals(variables('vectorDB').type, 'Postgres')]",
+      "condition": "[equals(variables('vectorDB'), 'Postgres')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "[format('km-module-postgres-{0}', parameters('suffix'))]",
@@ -632,8 +630,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.26.170.59819",
-              "templateHash": "6580067089681445180"
+              "version": "0.27.1.19265",
+              "templateHash": "13604973308207908299"
             }
           },
           "parameters": {
@@ -715,7 +713,7 @@
           "resources": [
             {
               "type": "Microsoft.DBforPostgreSQL/flexibleServers/administrators",
-              "apiVersion": "2022-12-01",
+              "apiVersion": "2023-06-01-preview",
               "name": "[format('{0}/{1}', parameters('serverName'), parameters('managedIdentityPrincipalId'))]",
               "properties": {
                 "principalType": "ServicePrincipal",
@@ -728,7 +726,7 @@
             },
             {
               "type": "Microsoft.DBforPostgreSQL/flexibleServers",
-              "apiVersion": "2022-12-01",
+              "apiVersion": "2023-06-01-preview",
               "name": "[parameters('serverName')]",
               "location": "[parameters('location')]",
               "sku": {
@@ -740,6 +738,7 @@
                 "administratorLogin": "[parameters('administratorLogin')]",
                 "administratorLoginPassword": "[parameters('administratorLoginPassword')]",
                 "network": {
+                  "publicNetworkAccess": "Enabled",
                   "delegatedSubnetResourceId": "[if(empty(parameters('virtualNetworkExternalId')), json('null'), json(format('''{0}/subnets/{1}''', parameters('virtualNetworkExternalId'), parameters('subnetName'))))]",
                   "privateDnsZoneArmResourceId": "[if(empty(parameters('virtualNetworkExternalId')), json('null'), parameters('privateDnsZoneArmResourceId'))]"
                 },
@@ -760,7 +759,13 @@
                 }
               }
             }
-          ]
+          ],
+          "outputs": {
+            "PostgreSQLHost": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName')), '2023-06-01-preview').fullyQualifiedDomainName]"
+            }
+          }
         }
       },
       "dependsOn": [
@@ -804,8 +809,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.26.170.59819",
-              "templateHash": "8195898199308451447"
+              "version": "0.27.1.19265",
+              "templateHash": "1935056631988886562"
             },
             "description": "Creates an Azure Cognitive Services instance."
           },
@@ -984,8 +989,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.26.170.59819",
-              "templateHash": "3584343383825170510"
+              "version": "0.27.1.19265",
+              "templateHash": "16895036498247224584"
             },
             "description": "Creates an Azure Document Intelligence (form recognizer) instance."
           },
@@ -1103,8 +1108,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.26.170.59819",
-              "templateHash": "15906627962917124587"
+              "version": "0.27.1.19265",
+              "templateHash": "9903630474332811296"
             }
           },
           "parameters": {
@@ -1274,9 +1279,6 @@
           "KernelMemory__ServiceAuthorization__AccessKey2": {
             "value": "[parameters('WebServiceAuthorizationKey2')]"
           },
-          "AzureAISearch_Endpoint": {
-            "value": "[format('https://{0}.search.windows.net', reference(resourceId('Microsoft.Resources/deployments', format('km-module-aisearch-{0}', parameters('suffix'))), '2022-09-01').outputs.searchName.value)]"
-          },
           "AzureBlobs_Account": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', format('km-module-storage-{0}', parameters('suffix'))), '2022-09-01').outputs.storageAccountName.value]"
           },
@@ -1300,7 +1302,8 @@
           },
           "AzureAIDocIntel_Endpoint": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', format('km-module-docIntel-{0}', parameters('suffix'))), '2022-09-01').outputs.endpoint.value]"
-          }
+          },
+          "EnvironmentVariables": "[if(equals(variables('vectorDB'), 'AzureAISearch'), createObject('value', createArray(createObject('name', 'KernelMemory__DataIngestion__MemoryDbTypes__0', 'value', 'AzureAISearch'), createObject('name', 'KernelMemory__Retrieval__MemoryDbType', 'value', 'AzureAISearch'), createObject('name', 'KernelMemory__Services__AzureAISearch__Endpoint', 'value', format('https://{0}.search.windows.net', reference(resourceId('Microsoft.Resources/deployments', format('km-module-aisearch-{0}', parameters('suffix'))), '2022-09-01').outputs.searchName.value)))), createObject('value', createArray(createObject('name', 'KernelMemory__DataIngestion__MemoryDbTypes__0', 'value', 'Postgres'), createObject('name', 'KernelMemory__Retrieval__MemoryDbType', 'value', 'Postgres'), createObject('name', 'KernelMemory__Services__Postgres__Auth', 'value', 'AzureIdentity'), createObject('name', 'KernelMemory__Services__Postgres__ConnectionString', 'value', ''), createObject('name', 'KernelMemory__Services__Postgres__Host', 'value', reference(resourceId('Microsoft.Resources/deployments', format('km-module-postgres-{0}', parameters('suffix'))), '2022-09-01').outputs.PostgreSQLHost.value), createObject('name', 'KernelMemory__Services__Postgres__Port', 'value', '5432'), createObject('name', 'KernelMemory__Services__Postgres__UserName', 'value', reference(resourceId('Microsoft.Resources/deployments', format('km-module-managedidentity-{0}', parameters('suffix'))), '2022-09-01').outputs.managedIdentityPrincipalName.value))))]"
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -1308,8 +1311,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.26.170.59819",
-              "templateHash": "1087801445927599681"
+              "version": "0.27.1.19265",
+              "templateHash": "16435765052900924239"
             }
           },
           "parameters": {
@@ -1349,9 +1352,6 @@
             "AzureQueues_QueueName": {
               "type": "string"
             },
-            "AzureAISearch_Endpoint": {
-              "type": "string"
-            },
             "AzureOpenAIText_Endpoint": {
               "type": "string"
             },
@@ -1372,7 +1372,110 @@
             },
             "KernelMemory__ServiceAuthorization__AccessKey2": {
               "type": "string"
+            },
+            "EnvironmentVariables": {
+              "type": "array"
             }
+          },
+          "variables": {
+            "EnvVar": [
+              {
+                "name": "ASPNETCORE_ENVIRONMENT",
+                "value": "Production"
+              },
+              {
+                "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                "value": "[parameters('applicationInsightsConnectionString')]"
+              },
+              {
+                "name": "AZURE_CLIENT_ID",
+                "value": "[parameters('managedIdentityClientId')]"
+              },
+              {
+                "name": "KernelMemory__Service__OpenApiEnabled",
+                "value": "true"
+              },
+              {
+                "name": "KernelMemory__ContentStorageType",
+                "value": "AzureBlobs"
+              },
+              {
+                "name": "KernelMemory__TextGeneratorType",
+                "value": "AzureOpenAIText"
+              },
+              {
+                "name": "KernelMemory__DefaultIndexName",
+                "value": "default"
+              },
+              {
+                "name": "KernelMemory__ServiceAuthorization__Enabled",
+                "value": "true"
+              },
+              {
+                "name": "KernelMemory__ServiceAuthorization__AuthenticationType",
+                "value": "APIKey"
+              },
+              {
+                "name": "KernelMemory__ServiceAuthorization__HttpHeaderName",
+                "value": "Authorization"
+              },
+              {
+                "name": "KernelMemory__ServiceAuthorization__AccessKey1",
+                "value": "[parameters('KernelMemory__ServiceAuthorization__AccessKey1')]"
+              },
+              {
+                "name": "KernelMemory__ServiceAuthorization__AccessKey2",
+                "value": "[parameters('KernelMemory__ServiceAuthorization__AccessKey2')]"
+              },
+              {
+                "name": "KernelMemory__DataIngestion__DistributedOrchestration__QueueType",
+                "value": "AzureQueues"
+              },
+              {
+                "name": "KernelMemory__DataIngestion__EmbeddingGeneratorTypes__0",
+                "value": "AzureOpenAIEmbedding"
+              },
+              {
+                "name": "KernelMemory__DataIngestion__ImageOcrType",
+                "value": "AzureAIDocIntel"
+              },
+              {
+                "name": "KernelMemory__Retrieval__EmbeddingGeneratorType",
+                "value": "AzureOpenAIEmbedding"
+              },
+              {
+                "name": "KernelMemory__Services__AzureBlobs__Account",
+                "value": "[parameters('AzureBlobs_Account')]"
+              },
+              {
+                "name": "KernelMemory__Services__AzureQueues__Account",
+                "value": "[parameters('AzureQueues_Account')]"
+              },
+              {
+                "name": "KernelMemory__Services__AzureQueues__QueueName",
+                "value": "[parameters('AzureQueues_QueueName')]"
+              },
+              {
+                "name": "KernelMemory__Services__AzureOpenAIText__Endpoint",
+                "value": "[parameters('AzureOpenAIText_Endpoint')]"
+              },
+              {
+                "name": "KernelMemory__Services__AzureOpenAIText__Deployment",
+                "value": "[parameters('AzureOpenAIText_Deployment')]"
+              },
+              {
+                "name": "KernelMemory__Services__AzureOpenAIEmbedding__Endpoint",
+                "value": "[parameters('AzureOpenAIEmbedding_Endpoint')]"
+              },
+              {
+                "name": "KernelMemory__Services__AzureOpenAIEmbedding__Deployment",
+                "value": "[parameters('AzureOpenAIEmbedding_Deployment')]"
+              },
+              {
+                "name": "KernelMemory__Services__AzureAIDocIntel__Endpoint",
+                "value": "[parameters('AzureAIDocIntel_Endpoint')]"
+              }
+            ]
           },
           "resources": [
             {
@@ -1411,116 +1514,7 @@
                         "cpu": "[json('0.25')]",
                         "memory": "0.5Gi"
                       },
-                      "env": [
-                        {
-                          "name": "ASPNETCORE_ENVIRONMENT",
-                          "value": "Production"
-                        },
-                        {
-                          "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
-                          "value": "[parameters('applicationInsightsConnectionString')]"
-                        },
-                        {
-                          "name": "AZURE_CLIENT_ID",
-                          "value": "[parameters('managedIdentityClientId')]"
-                        },
-                        {
-                          "name": "KernelMemory__Service__OpenApiEnabled",
-                          "value": "true"
-                        },
-                        {
-                          "name": "KernelMemory__ContentStorageType",
-                          "value": "AzureBlobs"
-                        },
-                        {
-                          "name": "KernelMemory__TextGeneratorType",
-                          "value": "AzureOpenAIText"
-                        },
-                        {
-                          "name": "KernelMemory__DefaultIndexName",
-                          "value": "default"
-                        },
-                        {
-                          "name": "KernelMemory__ServiceAuthorization__Enabled",
-                          "value": "true"
-                        },
-                        {
-                          "name": "KernelMemory__ServiceAuthorization__AuthenticationType",
-                          "value": "APIKey"
-                        },
-                        {
-                          "name": "KernelMemory__ServiceAuthorization__HttpHeaderName",
-                          "value": "Authorization"
-                        },
-                        {
-                          "name": "KernelMemory__ServiceAuthorization__AccessKey1",
-                          "value": "[parameters('KernelMemory__ServiceAuthorization__AccessKey1')]"
-                        },
-                        {
-                          "name": "KernelMemory__ServiceAuthorization__AccessKey2",
-                          "value": "[parameters('KernelMemory__ServiceAuthorization__AccessKey2')]"
-                        },
-                        {
-                          "name": "KernelMemory__DataIngestion__DistributedOrchestration__QueueType",
-                          "value": "AzureQueues"
-                        },
-                        {
-                          "name": "KernelMemory__DataIngestion__EmbeddingGeneratorTypes__0",
-                          "value": "AzureOpenAIEmbedding"
-                        },
-                        {
-                          "name": "KernelMemory__DataIngestion__MemoryDbTypes__0",
-                          "value": "AzureAISearch"
-                        },
-                        {
-                          "name": "KernelMemory__DataIngestion__ImageOcrType",
-                          "value": "AzureAIDocIntel"
-                        },
-                        {
-                          "name": "KernelMemory__Retrieval__EmbeddingGeneratorType",
-                          "value": "AzureOpenAIEmbedding"
-                        },
-                        {
-                          "name": "KernelMemory__Retrieval__MemoryDbType",
-                          "value": "AzureAISearch"
-                        },
-                        {
-                          "name": "KernelMemory__Services__AzureBlobs__Account",
-                          "value": "[parameters('AzureBlobs_Account')]"
-                        },
-                        {
-                          "name": "KernelMemory__Services__AzureQueues__Account",
-                          "value": "[parameters('AzureQueues_Account')]"
-                        },
-                        {
-                          "name": "KernelMemory__Services__AzureQueues__QueueName",
-                          "value": "[parameters('AzureQueues_QueueName')]"
-                        },
-                        {
-                          "name": "KernelMemory__Services__AzureAISearch__Endpoint",
-                          "value": "[parameters('AzureAISearch_Endpoint')]"
-                        },
-                        {
-                          "name": "KernelMemory__Services__AzureOpenAIText__Endpoint",
-                          "value": "[parameters('AzureOpenAIText_Endpoint')]"
-                        },
-                        {
-                          "name": "KernelMemory__Services__AzureOpenAIText__Deployment",
-                          "value": "[parameters('AzureOpenAIText_Deployment')]"
-                        },
-                        {
-                          "name": "KernelMemory__Services__AzureOpenAIEmbedding__Endpoint",
-                          "value": "[parameters('AzureOpenAIEmbedding_Endpoint')]"
-                        },
-                        {
-                          "name": "KernelMemory__Services__AzureOpenAIEmbedding__Deployment",
-                          "value": "[parameters('AzureOpenAIEmbedding_Deployment')]"
-                        },
-                        {
-                          "name": "KernelMemory__Services__AzureAIDocIntel__Endpoint",
-                          "value": "[parameters('AzureAIDocIntel_Endpoint')]"
-                        }
-                      ]
+                      "env": "[union(variables('EnvVar'), parameters('EnvironmentVariables'))]"
                     }
                   ],
                   "scale": {
@@ -1569,6 +1563,7 @@
         "[resourceId('Microsoft.Resources/deployments', format('km-module-docIntel-{0}', parameters('suffix')))]",
         "[resourceId('Microsoft.Resources/deployments', format('km-module-managedidentity-{0}', parameters('suffix')))]",
         "[resourceId('Microsoft.Resources/deployments', format('km-module-openai-{0}', parameters('suffix')))]",
+        "[resourceId('Microsoft.Resources/deployments', format('km-module-postgres-{0}', parameters('suffix')))]",
         "[resourceId('Microsoft.Resources/deployments', format('km-module-aisearch-{0}', parameters('suffix')))]",
         "[resourceId('Microsoft.Resources/deployments', format('km-module-storage-{0}', parameters('suffix')))]"
       ]

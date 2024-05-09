@@ -34,7 +34,7 @@ param virtualNetworkExternalId string = ''
 param subnetName string = ''
 param privateDnsZoneArmResourceId string = ''
 
-resource serverName_resource 'Microsoft.DBforPostgreSQL/flexibleServers@2022-12-01' = {
+resource serverName_resource 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-01-preview' = {
   name: serverName
   location: location
   sku: {
@@ -46,6 +46,7 @@ resource serverName_resource 'Microsoft.DBforPostgreSQL/flexibleServers@2022-12-
     administratorLogin: administratorLogin
     administratorLoginPassword: administratorLoginPassword
     network: {
+      publicNetworkAccess: 'Enabled'
       delegatedSubnetResourceId: (empty(virtualNetworkExternalId)
         ? json('null')
         : json('\'${virtualNetworkExternalId}/subnets/${subnetName}\''))
@@ -78,4 +79,4 @@ resource serverName_resource 'Microsoft.DBforPostgreSQL/flexibleServers@2022-12-
   }
 }
 
-// output connection string 
+output PostgreSQLHost string = serverName_resource.properties.fullyQualifiedDomainName

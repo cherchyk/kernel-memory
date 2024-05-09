@@ -16,25 +16,14 @@ param suffix string = substring(newGuid(), 0, 6)
 @description('Pick a vector storage.')
 @allowed([
   'Azure AI Search'
-  'Azure AI Search with Semantic Search enabled'
+  // 'Azure AI Search with Semantic Search enabled'
   'Azure Database for PostgreSQL'
 ])
-param vectorDBParam string = 'Azure AI Search'
+param vectorDBParam string
 
 var vectorDB = (vectorDBParam == 'Azure AI Search')
-  ? {
-      name: 'Azure AI Search'
-      type: 'AzureAISearch'
-    }
-  : (vectorDBParam == 'Azure AI Search Semantic Search enabled')
-      ? {
-          name: 'Azure AI Search with Semantic Search enabled'
-          type: 'AzureAISearchSemantic Search'
-        }
-      : {
-          name: 'Azure Database for PostgreSQL'
-          type: 'Postgres'
-        }
+  ? 'AzureAISearch'
+  : (vectorDBParam == 'Azure AI Search Semantic Search enabled') ? 'AzureAISearchSemantic Search' : 'Postgres'
 
 @description('''
 gpt-35-turbo-16k deployment model\'s Tokens-Per-Minute (TPM) capacity, measured in thousands.
@@ -155,7 +144,7 @@ module storage 'modules/storage.bicep' = {
   for relevant data when searching memories and asking questions.
 */
 module search 'modules/ai-search.bicep' =
-  if (vectorDB.type == 'AzureAISearch') {
+  if (vectorDB == 'AzureAISearch') {
     name: 'km-module-aisearch-${suffix}'
     scope: rg
     params: {
@@ -178,7 +167,7 @@ var administratorLogin = 'kmadmin'
 var administratorLoginPassword = guid('postgres', suffix, rg.id)
 
 module postgres 'modules/postgreSQL.bicep' =
-  if (vectorDB.type == 'Postgres') {
+  if (vectorDB == 'Postgres') {
     name: 'km-module-postgres-${suffix}'
     scope: rg
     params: {
@@ -194,6 +183,52 @@ module postgres 'modules/postgreSQL.bicep' =
       managedIdentityPrincipalId: managedidentity.outputs.managedIdentityPrincipalId
     }
   }
+
+var VectorDBEnvVar = (vectorDB == 'AzureAISearch')
+  ? [
+      {
+        name: 'KernelMemory__DataIngestion__MemoryDbTypes__0'
+        value: 'AzureAISearch'
+      }
+      {
+        name: 'KernelMemory__Retrieval__MemoryDbType'
+        value: 'AzureAISearch'
+      }
+      {
+        name: 'KernelMemory__Services__AzureAISearch__Endpoint'
+        value: 'https://${search.outputs.searchName }.search.windows.net'
+      }
+    ]
+  : [
+      {
+        name: 'KernelMemory__DataIngestion__MemoryDbTypes__0'
+        value: 'Postgres'
+      }
+      {
+        name: 'KernelMemory__Retrieval__MemoryDbType'
+        value: 'Postgres'
+      }
+      {
+        name: 'KernelMemory__Services__Postgres__Auth'
+        value: 'AzureIdentity'
+      }
+      {
+        name: 'KernelMemory__Services__Postgres__ConnectionString'
+        value: ''
+      }
+      {
+        name: 'KernelMemory__Services__Postgres__Host'
+        value: postgres.outputs.PostgreSQLHost
+      }
+      {
+        name: 'KernelMemory__Services__Postgres__Port'
+        value: '5432'
+      }
+      {
+        name: 'KernelMemory__Services__Postgres__UserName'
+        value: managedidentity.outputs.managedIdentityPrincipalName
+      }
+    ]
 
 /*
   Module to create a Azure OpenAI service
@@ -271,7 +306,8 @@ module containerAppService 'modules/container-app.bicep' = {
     KernelMemory__ServiceAuthorization__AccessKey1: WebServiceAuthorizationKey1
     KernelMemory__ServiceAuthorization__AccessKey2: WebServiceAuthorizationKey2
 
-    AzureAISearch_Endpoint: 'https://${search.outputs.searchName }.search.windows.net'
+    //AzureAISearch_Endpoint: 'https://${search.outputs.searchName }.search.windows.net' ///////////////
+
     AzureBlobs_Account: storage.outputs.storageAccountName
     AzureQueues_Account: storage.outputs.storageAccountName
     AzureQueues_QueueName: storage.outputs.queueName
@@ -280,6 +316,8 @@ module containerAppService 'modules/container-app.bicep' = {
     AzureOpenAIText_Deployment: chatGpt.deploymentName
     AzureOpenAIText_Endpoint: openAi.outputs.endpoint
     AzureAIDocIntel_Endpoint: docIntel.outputs.endpoint
+
+    EnvironmentVariables: VectorDBEnvVar
   }
 }
 

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.27.1.19265",
-      "templateHash": "14822024283956743284"
+      "templateHash": "8511694087879891370"
     }
   },
   "parameters": {
@@ -631,7 +631,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.27.1.19265",
-              "templateHash": "5006012096985640877"
+              "templateHash": "4904250800075698189"
             }
           },
           "parameters": {
@@ -713,7 +713,7 @@
           "resources": [
             {
               "type": "Microsoft.DBforPostgreSQL/flexibleServers/administrators",
-              "apiVersion": "2023-06-01-preview",
+              "apiVersion": "2023-03-01-preview",
               "name": "[format('{0}/{1}', parameters('serverName'), parameters('managedIdentityPrincipalId'))]",
               "properties": {
                 "principalType": "ServicePrincipal",
@@ -726,7 +726,7 @@
             },
             {
               "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
-              "apiVersion": "2023-06-01-preview",
+              "apiVersion": "2023-03-01-preview",
               "name": "[format('{0}/{1}', parameters('serverName'), 'AllowAllAzureServicesAndResourcesWithinAzureIps')]",
               "properties": {
                 "startIpAddress": "0.0.0.0",
@@ -738,21 +738,8 @@
               ]
             },
             {
-              "type": "Microsoft.DBforPostgreSQL/flexibleServers/configurations",
-              "apiVersion": "2023-06-01-preview",
-              "name": "[format('{0}/{1}', parameters('serverName'), 'azure.extensions')]",
-              "properties": {
-                "value": "VECTOR",
-                "source": "user-override"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers/firewallRules', parameters('serverName'), 'AllowAllAzureServicesAndResourcesWithinAzureIps')]",
-                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName'))]"
-              ]
-            },
-            {
               "type": "Microsoft.DBforPostgreSQL/flexibleServers",
-              "apiVersion": "2023-06-01-preview",
+              "apiVersion": "2023-03-01-preview",
               "name": "[parameters('serverName')]",
               "location": "[parameters('location')]",
               "sku": {
@@ -784,12 +771,24 @@
                   "passwordAuth": "Enabled"
                 }
               }
+            },
+            {
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers/configurations",
+              "apiVersion": "2023-03-01-preview",
+              "name": "[format('{0}/{1}', parameters('serverName'), 'azure.extensions')]",
+              "properties": {
+                "value": "vector",
+                "source": "user-override"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName'))]"
+              ]
             }
           ],
           "outputs": {
             "PostgreSQLHost": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName')), '2023-06-01-preview').fullyQualifiedDomainName]"
+              "value": "[reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName')), '2023-03-01-preview').fullyQualifiedDomainName]"
             }
           }
         }

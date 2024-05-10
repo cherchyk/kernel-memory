@@ -34,7 +34,7 @@ param virtualNetworkExternalId string = ''
 param subnetName string = ''
 param privateDnsZoneArmResourceId string = ''
 
-resource serverName_resource 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-01-preview' = {
+resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-preview' = {
   name: serverName
   location: location
   sku: {
@@ -89,28 +89,28 @@ resource serverName_resource 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-
     }
   }
 
-  resource Extension 'configurations' = {
-    dependsOn: [
-      serverFirewallRule
-    ]
-    name: 'azure.extensions'
-    properties: {
-      value: 'VECTOR'
-      source: 'user-override'
-    }
-  }
+  // resource Extension 'configurations' = {
+  //   dependsOn: [
+  //     serverFirewallRule
+  //   ]
+  //   name: 'azure.extensions'
+  //   properties: {
+  //     value: 'vector'
+  //     source: 'user-override'
+  //   }
+  // }
 }
 
-// resource PostgreSQLExtention 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2023-06-01-preview' = {
-//   parent: serverName_resource
-//   dependsOn: [
-//     serverName_resource
-//   ]
-//   name: concat(serverName, '/azure.extensions')
-//   properties: {
-//     value: 'VECTOR'
-//     source: 'user-override'
-//   }
-// }
+resource PostgreSQLExtention 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2023-03-01-preview' = {
+  name: 'azure.extensions'
+  parent: postgresServer
+  properties: {
+    value: 'vector'
+    source: 'user-override'
+  }
+  dependsOn: [
+    postgresServer
+  ]
+}
 
-output PostgreSQLHost string = serverName_resource.properties.fullyQualifiedDomainName
+output PostgreSQLHost string = postgresServer.properties.fullyQualifiedDomainName

@@ -93,17 +93,17 @@ public class PostgresConfig
     public string ConnectionString { get; set; } = string.Empty;
 
     /// <summary>
-    /// Host to connect to Postgres. Used with AuthTypes=AzureIdentity. Reduntant with AuthTypes=ConnectionString
+    /// Host to connect to Postgres. Used with AuthTypes=AzureIdentity. Redundant with AuthTypes=ConnectionString
     /// </summary>
     public string Host { get; set; } = string.Empty;
 
     /// <summary>
-    /// Port to connect to Postgres. Used with AuthTypes=AzureIdentity. Reduntant with AuthTypes=ConnectionString
+    /// Port to connect to Postgres. Used with AuthTypes=AzureIdentity. Redundant with AuthTypes=ConnectionString
     /// </summary>
     public int Port { get; set; } = 0;
 
     /// <summary>
-    /// UserName to connect to Postgres. Used with AuthTypes=AzureIdentity. Reduntant with AuthTypes=ConnectionString
+    /// UserName to connect to Postgres. Used with AuthTypes=AzureIdentity. Redundant with AuthTypes=ConnectionString
     /// </summary>
     public string UserName { get; set; } = string.Empty;
 
@@ -191,8 +191,6 @@ public class PostgresConfig
     private string BuildConnectinStringUsingManagedIdentity()
     {
         // https://learn.microsoft.com/azure/postgresql/flexible-server/how-to-connect-with-managed-identity
-
-        this._log.LogCritical("Entering BuildConnectinStringUsingManagedIdentityAuthType.");
         try
         {
             // Call managed identities for Azure resources endpoint.
@@ -200,12 +198,7 @@ public class PostgresConfig
             string accessToken = (tokenProvider.GetToken(
                 new Azure.Core.TokenRequestContext(scopes: s_tokenRequestScopes) { })).Token;
 
-
-            string connString =
-        $"Server={this.Host}; User Id={this.UserName}; Database={this.Database}; Port={this.Port}; Password={accessToken}; SSLMode=Prefer";
-
-            this._log.LogCritical($"connString is {connString}");
-
+            string connString = $"Server={this.Host}; User Id={this.UserName}; Database={this.Database}; Port={this.Port}; Password={accessToken}; SSLMode=Prefer";
             return connString;
         }
         catch (Exception e)
@@ -219,8 +212,6 @@ public class PostgresConfig
     /// </summary>
     public string GetConnectionStringByAuth()
     {
-        this._log.LogCritical("Postgres: AuthType is {Auth}.");
-
         if (this.Auth == AuthTypes.ConnectionString)
         {
             return this.ConnectionString;
@@ -228,7 +219,6 @@ public class PostgresConfig
 
         if (this.Auth == AuthTypes.AzureIdentity)
         {
-            this._log.LogCritical("Postgres: AuthType is {Auth}.");
             return this.BuildConnectinStringUsingManagedIdentity();
         }
 

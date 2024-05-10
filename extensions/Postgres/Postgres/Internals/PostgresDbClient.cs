@@ -50,8 +50,6 @@ internal sealed class PostgresDbClient : IDisposable
         config.Validate();
         this._log = log ?? DefaultLogger<PostgresDbClient>.Instance;
 
-        this._log.LogInformation("Postgres ConnectionString: {0}", config.GetConnectionStringByAuth());
-
         NpgsqlDataSourceBuilder dataSourceBuilder = new(config.GetConnectionStringByAuth());
         dataSourceBuilder.UseVector();
         this._dataSource = dataSourceBuilder.Build();

@@ -188,7 +188,7 @@ public class PostgresConfig
         };
     }
 
-    private string BuildConnectinStringUsingManagedIdentity()
+    private string BuildConnectionStringUsingManagedIdentity()
     {
         // https://learn.microsoft.com/azure/postgresql/flexible-server/how-to-connect-with-managed-identity
         try
@@ -219,7 +219,7 @@ public class PostgresConfig
 
         if (this.Auth == AuthTypes.AzureIdentity)
         {
-            return this.BuildConnectinStringUsingManagedIdentity();
+            return this.BuildConnectionStringUsingManagedIdentity();
         }
 
         throw new ConfigurationException("Postgres: unknown authentication type.");

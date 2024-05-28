@@ -143,17 +143,16 @@ module storage 'modules/storage.bicep' = {
   Azure AI Search is used to store document chunks and LLM embeddings, and to search
   for relevant data when searching memories and asking questions.
 */
-module aisearch 'modules/ai-search.bicep' =
-  if (vectorDB == 'AzureAISearch') {
-    name: 'km-module-aisearch-${suffix}'
-    scope: rg
-    params: {
-      location: location
-      name: 'km-search-${suffix}'
-      suffix: suffix
-      managedIdentityPrincipalId: managedidentity.outputs.managedIdentityPrincipalId
-    }
+module aisearch 'modules/ai-search.bicep' = if (vectorDB == 'AzureAISearch') {
+  name: 'km-module-aisearch-${suffix}'
+  scope: rg
+  params: {
+    location: location
+    name: 'km-search-${suffix}'
+    suffix: suffix
+    managedIdentityPrincipalId: managedidentity.outputs.managedIdentityPrincipalId
   }
+}
 
 /*
   Module to create a Postgres DB
@@ -164,25 +163,26 @@ module aisearch 'modules/ai-search.bicep' =
 */
 
 var administratorLogin = 'kmadmin'
+
 var administratorLoginPassword = guid('postgres', suffix, rg.id)
+var databaseName = 'km-db'
+module postgres 'modules/postgreSQL.bicep' = if (vectorDB == 'Postgres') {
+  name: 'km-module-postgres-${suffix}'
+  scope: rg
+  params: {
+    location: location
+    // suffix: suffix
+    // managedIdentityPrincipalId: managedidentity.outputs.managedIdentityPrincipalId
+    serverName: 'km-postgres-${suffix}'
+    databaseName: databaseName
 
-module postgres 'modules/postgreSQL.bicep' =
-  if (vectorDB == 'Postgres') {
-    name: 'km-module-postgres-${suffix}'
-    scope: rg
-    params: {
-      location: location
-      // suffix: suffix
-      // managedIdentityPrincipalId: managedidentity.outputs.managedIdentityPrincipalId
-      serverName: 'km-postgres-${suffix}'
-
-      administratorLogin: administratorLogin
-      administratorLoginPassword: administratorLoginPassword
-      managedIdentityTenantId: managedidentity.outputs.managedIdentityTenantId
-      managedIdentityPrincipalName: managedidentity.outputs.managedIdentityPrincipalName
-      managedIdentityPrincipalId: managedidentity.outputs.managedIdentityPrincipalId
-    }
+    administratorLogin: administratorLogin
+    administratorLoginPassword: administratorLoginPassword
+    managedIdentityTenantId: managedidentity.outputs.managedIdentityTenantId
+    managedIdentityPrincipalName: managedidentity.outputs.managedIdentityPrincipalName
+    managedIdentityPrincipalId: managedidentity.outputs.managedIdentityPrincipalId
   }
+}
 
 var VectorDBEnvVar = (vectorDB == 'AzureAISearch')
   ? [

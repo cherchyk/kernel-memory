@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.27.1.19265",
-      "templateHash": "8511694087879891370"
+      "templateHash": "1299658376441916839"
     }
   },
   "parameters": {
@@ -106,7 +106,8 @@
       }
     ],
     "administratorLogin": "kmadmin",
-    "administratorLoginPassword": "[guid('postgres', parameters('suffix'), variables('rg').id)]"
+    "administratorLoginPassword": "[guid('postgres', parameters('suffix'), variables('rg').id)]",
+    "databaseName": "km-db"
   },
   "resources": [
     {
@@ -608,6 +609,9 @@
           "serverName": {
             "value": "[format('km-postgres-{0}', parameters('suffix'))]"
           },
+          "databaseName": {
+            "value": "[variables('databaseName')]"
+          },
           "administratorLogin": {
             "value": "[variables('administratorLogin')]"
           },
@@ -631,7 +635,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.27.1.19265",
-              "templateHash": "4904250800075698189"
+              "templateHash": "4566934935424354398"
             }
           },
           "parameters": {
@@ -680,6 +684,9 @@
               "type": "string",
               "defaultValue": "Standard_D4ds_v4"
             },
+            "databaseName": {
+              "type": "string"
+            },
             "haMode": {
               "type": "string",
               "defaultValue": "Disabled",
@@ -695,7 +702,7 @@
             },
             "version": {
               "type": "string",
-              "defaultValue": "12"
+              "defaultValue": "15"
             },
             "virtualNetworkExternalId": {
               "type": "string",
@@ -712,6 +719,14 @@
           },
           "resources": [
             {
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
+              "apiVersion": "2023-03-01-preview",
+              "name": "[format('{0}/{1}', parameters('serverName'), parameters('databaseName'))]",
+              "dependsOn": [
+                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName'))]"
+              ]
+            },
+            {
               "type": "Microsoft.DBforPostgreSQL/flexibleServers/administrators",
               "apiVersion": "2023-03-01-preview",
               "name": "[format('{0}/{1}', parameters('serverName'), parameters('managedIdentityPrincipalId'))]",
@@ -721,13 +736,14 @@
                 "tenantId": "[parameters('managedIdentityTenantId')]"
               },
               "dependsOn": [
+                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers/databases', parameters('serverName'), parameters('databaseName'))]",
                 "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName'))]"
               ]
             },
             {
               "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
               "apiVersion": "2023-03-01-preview",
-              "name": "[format('{0}/{1}', parameters('serverName'), 'AllowAllAzureServicesAndResourcesWithinAzureIps')]",
+              "name": "[format('{0}/{1}', parameters('serverName'), 'allow-all-azure-internal-IPs')]",
               "properties": {
                 "startIpAddress": "0.0.0.0",
                 "endIpAddress": "0.0.0.0"
@@ -735,6 +751,19 @@
               "dependsOn": [
                 "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers/administrators', parameters('serverName'), parameters('managedIdentityPrincipalId'))]",
                 "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers/configurations",
+              "apiVersion": "2023-03-01-preview",
+              "name": "[format('{0}/{1}', parameters('serverName'), 'azure.extensions')]",
+              "properties": {
+                "value": "vector",
+                "source": "user-override"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName'))]",
+                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers/firewallRules', parameters('serverName'), 'allow-all-azure-internal-IPs')]"
               ]
             },
             {
@@ -748,24 +777,14 @@
               },
               "properties": {
                 "version": "[parameters('version')]",
-                "administratorLogin": "[parameters('administratorLogin')]",
-                "administratorLoginPassword": "[parameters('administratorLoginPassword')]",
-                "network": {
-                  "publicNetworkAccess": "Enabled",
-                  "delegatedSubnetResourceId": "[if(empty(parameters('virtualNetworkExternalId')), json('null'), json(format('''{0}/subnets/{1}''', parameters('virtualNetworkExternalId'), parameters('subnetName'))))]",
-                  "privateDnsZoneArmResourceId": "[if(empty(parameters('virtualNetworkExternalId')), json('null'), parameters('privateDnsZoneArmResourceId'))]"
+                "storage": {
+                  "storageSizeGB": "[parameters('skuSizeGB')]"
                 },
                 "highAvailability": {
                   "mode": "[parameters('haMode')]"
                 },
-                "storage": {
-                  "storageSizeGB": "[parameters('skuSizeGB')]"
-                },
-                "backup": {
-                  "backupRetentionDays": 7,
-                  "geoRedundantBackup": "Disabled"
-                },
-                "availabilityZone": "[parameters('availabilityZone')]",
+                "administratorLogin": "[parameters('administratorLogin')]",
+                "administratorLoginPassword": "[parameters('administratorLoginPassword')]",
                 "authConfig": {
                   "activeDirectoryAuth": "Enabled",
                   "passwordAuth": "Enabled"
@@ -773,12 +792,40 @@
               }
             },
             {
-              "type": "Microsoft.DBforPostgreSQL/flexibleServers/configurations",
-              "apiVersion": "2023-03-01-preview",
-              "name": "[format('{0}/{1}', parameters('serverName'), 'azure.extensions')]",
+              "type": "Microsoft.Resources/deploymentScripts",
+              "apiVersion": "2023-08-01",
+              "name": "createExtension",
+              "location": "[parameters('location')]",
+              "kind": "AzureCLI",
               "properties": {
-                "value": "vector",
-                "source": "user-override"
+                "azCliVersion": "2.59.0",
+                "scriptContent": "      az extension add -n rdbms-connect\n      az postgres flexible-server execute --admin-password '$POSTGRES_PASSWORD' --admin-user '$POSTGRES_USER' --allow-preview true --name '$serverName' --database-name '$dbName'  --querytext 'create extension vector'\n    ",
+                "cleanupPreference": "OnSuccess",
+                "arguments": "",
+                "environmentVariables": [
+                  {
+                    "name": "POSTGRES_USER",
+                    "value": "[parameters('administratorLogin')]"
+                  },
+                  {
+                    "name": "POSTGRES_PASSWORD",
+                    "value": "[parameters('administratorLoginPassword')]"
+                  },
+                  {
+                    "name": "POSTGRES_HOST",
+                    "value": "[reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName')), '2023-03-01-preview').fullyQualifiedDomainName]"
+                  },
+                  {
+                    "name": "serverName",
+                    "value": "[parameters('serverName')]"
+                  },
+                  {
+                    "name": "dbName",
+                    "value": "[parameters('databaseName')]"
+                  }
+                ],
+                "forceUpdateTag": "Rerun",
+                "retentionInterval": "P1D"
               },
               "dependsOn": [
                 "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName'))]"

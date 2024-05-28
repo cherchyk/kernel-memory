@@ -22,6 +22,8 @@ param serverEdition string = 'GeneralPurpose'
 param skuSizeGB int = 128
 param dbInstanceType string = 'Standard_D4ds_v4'
 
+param databaseName string
+
 @allowed([
   'Disabled'
   'SameZone'
@@ -29,7 +31,7 @@ param dbInstanceType string = 'Standard_D4ds_v4'
 ])
 param haMode string = 'Disabled'
 param availabilityZone string = '1'
-param version string = '12'
+param version string = '15'
 param virtualNetworkExternalId string = ''
 param subnetName string = ''
 param privateDnsZoneArmResourceId string = ''
@@ -43,33 +45,42 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-pr
   }
   properties: {
     version: version
-    administratorLogin: administratorLogin
-    administratorLoginPassword: administratorLoginPassword
-    network: {
-      publicNetworkAccess: 'Enabled'
-      delegatedSubnetResourceId: (empty(virtualNetworkExternalId)
-        ? json('null')
-        : json('\'${virtualNetworkExternalId}/subnets/${subnetName}\''))
-      privateDnsZoneArmResourceId: (empty(virtualNetworkExternalId) ? json('null') : privateDnsZoneArmResourceId)
+    storage: {
+      storageSizeGB: skuSizeGB
     }
     highAvailability: {
       mode: haMode
     }
-    storage: {
-      storageSizeGB: skuSizeGB
-    }
-    backup: {
-      backupRetentionDays: 7
-      geoRedundantBackup: 'Disabled'
-    }
-    availabilityZone: availabilityZone
+
+    administratorLogin: administratorLogin
+    administratorLoginPassword: administratorLoginPassword
     authConfig: {
       activeDirectoryAuth: 'Enabled'
       passwordAuth: 'Enabled'
     }
+
+    // network: {
+    //   publicNetworkAccess: 'Enabled'
+    //   delegatedSubnetResourceId: (empty(virtualNetworkExternalId)
+    //     ? json('null')
+    //     : json('\'${virtualNetworkExternalId}/subnets/${subnetName}\''))
+    //   privateDnsZoneArmResourceId: (empty(virtualNetworkExternalId) ? json('null') : privateDnsZoneArmResourceId)
+    // }
+    // backup: {
+    //   backupRetentionDays: 7
+    //   geoRedundantBackup: 'Disabled'
+    // }
+    // availabilityZone: availabilityZone
+  }
+
+  resource database 'databases' = {
+    name: databaseName
   }
 
   resource administrator 'administrators' = {
+    dependsOn: [
+      database
+    ]
     name: managedIdentityPrincipalId
     properties: {
       principalType: 'ServicePrincipal'
@@ -82,35 +93,79 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-pr
     dependsOn: [
       administrator
     ]
-    name: 'AllowAllAzureServicesAndResourcesWithinAzureIps'
+    name: 'allow-all-azure-internal-IPs'
     properties: {
       startIpAddress: '0.0.0.0'
       endIpAddress: '0.0.0.0'
     }
   }
 
-  // resource Extension 'configurations' = {
-  //   dependsOn: [
-  //     serverFirewallRule
-  //   ]
-  //   name: 'azure.extensions'
-  //   properties: {
-  //     value: 'vector'
-  //     source: 'user-override'
-  //   }
-  // }
+  resource Extension 'configurations' = {
+    dependsOn: [
+      serverFirewallRule
+    ]
+    name: 'azure.extensions'
+    properties: {
+      value: 'vector'
+      source: 'user-override'
+    }
+  }
 }
 
-resource PostgreSQLExtention 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2023-03-01-preview' = {
-  name: 'azure.extensions'
-  parent: postgresServer
-  properties: {
-    value: 'vector'
-    source: 'user-override'
-  }
+// resource PostgreSQLExtention 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2022-12-01' = {
+//   name: 'azure.extensions'
+//   parent: postgresServer
+//   properties: {
+//     value: 'vector'
+//     source: 'user-override'
+//   }
+//   dependsOn: [
+//     postgresServer
+//   ]
+// }
+
+// Microsoft.Resources/deploymentScripts that will call PostgresSQL to execute the SQL script: 'CREATE EXTENSION vector;'
+// https://learn.microsoft.com/en-us/cli/azure/postgres/flexible-server?view=azure-cli-latest#az-postgres-flexible-server-execute
+resource deploymentScriptCreateExtension 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
+  name: 'createExtension'
+  location: location
+  kind: 'AzureCLI'
   dependsOn: [
     postgresServer
   ]
+  properties: {
+    azCliVersion: '2.59.0'
+    scriptContent: '''
+      az extension add -n rdbms-connect
+      az postgres flexible-server execute --admin-password '$POSTGRES_PASSWORD' --admin-user '$POSTGRES_USER' --allow-preview true --name '$serverName' --database-name '$dbName'  --querytext 'create extension vector'
+    '''
+    cleanupPreference: 'OnSuccess'
+    arguments: ''
+    environmentVariables: [
+      {
+        name: 'POSTGRES_USER'
+        value: administratorLogin
+      }
+      {
+        name: 'POSTGRES_PASSWORD'
+        value: administratorLoginPassword
+      }
+      {
+        name: 'POSTGRES_HOST'
+        value: postgresServer.properties.fullyQualifiedDomainName
+      }
+      {
+        name: 'serverName'
+        value: serverName
+      }
+      {
+        name: 'dbName'
+        value: databaseName
+      }
+    ]
+    forceUpdateTag: 'Rerun'
+    retentionInterval: 'P1D'
+  }
 }
 
 output PostgreSQLHost string = postgresServer.properties.fullyQualifiedDomainName

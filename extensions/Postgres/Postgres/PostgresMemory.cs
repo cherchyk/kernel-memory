@@ -49,6 +49,8 @@ public sealed class PostgresMemory : IMemoryDb, IDisposable
         // Normalize underscore and check for invalid symbols
         config.TableNamePrefix = NormalizeTableNamePrefix(config.TableNamePrefix);
 
+        this._log.LogInformation("Postgres ConnectionString: {0}", config.GetConnectionStringByAuth());
+
         this._db = new PostgresDbClient(config, this._log);
     }
 

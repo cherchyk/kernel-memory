@@ -31,7 +31,8 @@ public class ConcurrencyTests : BaseFunctionalTestCase
             case "customSQL":
                 config = new PostgresConfig
                 {
-                    ConnectionString = this.PostgresConfig.ConnectionString,
+                    Auth = PostgresConfig.AuthTypes.ConnectionString,
+                    ConnectionString = this.PostgresConfig.GetConnectionStringByAuth(),
                     TableNamePrefix = "custom_sql",
                     Columns = new Dictionary<string, string>()
                     {

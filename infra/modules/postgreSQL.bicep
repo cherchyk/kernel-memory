@@ -1,22 +1,28 @@
 // Reused template from https://learn.microsoft.com/azure/postgresql/flexible-server/quickstart-create-server-bicep?tabs=CLI
 
 param location string = resourceGroup().location
+var rgName = resourceGroup().name
 
 @description('Server Name for Azure Database for PostgreSQL')
 param serverName string
 
 @description('Database administrator login name')
 @minLength(1)
-param administratorLogin string
+param adminLogin string
 
 @description('Database administrator password')
 @minLength(8)
 @secure()
-param administratorLoginPassword string
+param adminPassword string
 
+param suffix string = uniqueString(resourceGroup().id)
+
+param managedIdentityResource object
 param managedIdentityTenantId string
 param managedIdentityPrincipalName string
 param managedIdentityPrincipalId string
+param managedIdentityId string
+param managedIdentityClientId string
 
 param serverEdition string = 'GeneralPurpose'
 param skuSizeGB int = 128
@@ -52,25 +58,12 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-pr
       mode: haMode
     }
 
-    administratorLogin: administratorLogin
-    administratorLoginPassword: administratorLoginPassword
+    administratorLogin: adminLogin
+    administratorLoginPassword: adminPassword
     authConfig: {
       activeDirectoryAuth: 'Enabled'
       passwordAuth: 'Enabled'
     }
-
-    // network: {
-    //   publicNetworkAccess: 'Enabled'
-    //   delegatedSubnetResourceId: (empty(virtualNetworkExternalId)
-    //     ? json('null')
-    //     : json('\'${virtualNetworkExternalId}/subnets/${subnetName}\''))
-    //   privateDnsZoneArmResourceId: (empty(virtualNetworkExternalId) ? json('null') : privateDnsZoneArmResourceId)
-    // }
-    // backup: {
-    //   backupRetentionDays: 7
-    //   geoRedundantBackup: 'Disabled'
-    // }
-    // availabilityZone: availabilityZone
   }
 
   resource database 'databases' = {
@@ -112,58 +105,55 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-pr
   }
 }
 
-// resource PostgreSQLExtention 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2022-12-01' = {
-//   name: 'azure.extensions'
-//   parent: postgresServer
-//   properties: {
-//     value: 'vector'
-//     source: 'user-override'
-//   }
-//   dependsOn: [
-//     postgresServer
-//   ]
-// }
-
 // Microsoft.Resources/deploymentScripts that will call PostgresSQL to execute the SQL script: 'CREATE EXTENSION vector;'
 // https://learn.microsoft.com/en-us/cli/azure/postgres/flexible-server?view=azure-cli-latest#az-postgres-flexible-server-execute
-resource deploymentScriptCreateExtension 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
-  name: 'createExtension'
+
+@description('The SQL script to execute.')
+param sqlScript string = 'create extension vector'
+
+resource deploymentScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
+  name: 'executePostgreSqlScript'
   location: location
   kind: 'AzureCLI'
+  identity: {
+    type: 'userAssigned'
+    userAssignedIdentities: {
+      '${managedIdentityId}': {}
+    }
+  }
   dependsOn: [
     postgresServer
   ]
   properties: {
-    azCliVersion: '2.59.0'
+    azCliVersion: '2.42.0'
     scriptContent: '''
       az extension add -n rdbms-connect
-      az postgres flexible-server execute --admin-password '$POSTGRES_PASSWORD' --admin-user '$POSTGRES_USER' --allow-preview true --name '$serverName' --database-name '$dbName'  --querytext 'create extension vector'
+      az postgres flexible-server execute --name "$serverName" --admin-user "$adminLogin" --admin-password "$adminPassword" --database-name "$databaseName" --querytext "$sqlScript"
     '''
-    cleanupPreference: 'OnSuccess'
-    arguments: ''
     environmentVariables: [
       {
-        name: 'POSTGRES_USER'
-        value: administratorLogin
+        name: 'adminLogin'
+        value: adminLogin
       }
       {
-        name: 'POSTGRES_PASSWORD'
-        value: administratorLoginPassword
+        name: 'adminPassword'
+        value: adminPassword
       }
       {
-        name: 'POSTGRES_HOST'
-        value: postgresServer.properties.fullyQualifiedDomainName
+        name: 'sqlScript'
+        value: sqlScript
       }
       {
         name: 'serverName'
         value: serverName
       }
       {
-        name: 'dbName'
+        name: 'databaseName'
         value: databaseName
       }
     ]
-    forceUpdateTag: 'Rerun'
+    timeout: 'PT30M'
+    cleanupPreference: 'OnSuccess'
     retentionInterval: 'P1D'
   }
 }

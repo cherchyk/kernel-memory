@@ -1,12 +1,12 @@
-// targetScope = 'subscription'
-// param location string
-// resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-//   name: 'km-rg-${suffix}'
-//   location: location
-// }
+targetScope = 'subscription'
+param location string
+resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
+  name: 'km-rg-${suffix}'
+  location: location
+}
 
-var rg = resourceGroup()
-var location = resourceGroup().location
+// var rg = resourceGroup()
+// var location = resourceGroup().location
 
 @description('Suffix to create unique resource names; 4-6 characters. Default is a random 6 characters.')
 @minLength(4)
@@ -162,9 +162,8 @@ module aisearch 'modules/ai-search.bicep' = if (vectorDB == 'AzureAISearch') {
   for relevant data when searching memories and asking questions.
 */
 
-var administratorLogin = 'kmadmin'
-
-var administratorLoginPassword = guid('postgres', suffix, rg.id)
+var adminLogin = 'kmadmin'
+var adminPassword = guid('postgres', suffix, rg.id)
 var databaseName = 'km-db'
 module postgres 'modules/postgreSQL.bicep' = if (vectorDB == 'Postgres') {
   name: 'km-module-postgres-${suffix}'
@@ -176,11 +175,17 @@ module postgres 'modules/postgreSQL.bicep' = if (vectorDB == 'Postgres') {
     serverName: 'km-postgres-${suffix}'
     databaseName: databaseName
 
-    administratorLogin: administratorLogin
-    administratorLoginPassword: administratorLoginPassword
+    adminLogin: adminLogin
+    adminPassword: adminPassword
+
+    suffix: suffix
+
+    managedIdentityResource: managedidentity.outputs.managedIdentityResource
     managedIdentityTenantId: managedidentity.outputs.managedIdentityTenantId
     managedIdentityPrincipalName: managedidentity.outputs.managedIdentityPrincipalName
     managedIdentityPrincipalId: managedidentity.outputs.managedIdentityPrincipalId
+    managedIdentityId: managedidentity.outputs.managedIdentityId
+    managedIdentityClientId: managedidentity.outputs.managedIdentityClientId
   }
 }
 
@@ -234,7 +239,7 @@ var VectorDBEnvVar = (vectorDB == 'AzureAISearch')
   Module to create a Azure OpenAI service
   See https://azure.microsoft.com/products/ai-services/openai-service
       and https://github.com/Azure-Samples/azure-search-openai-demo/blob/main/infra/main.bicep for more details
-  
+
   Azure OpenAI is used to generate text embeddings, and to generate text from memories (answers and summaries)
 */
 module openAi 'modules/cognitive-services-openAI.bicep' = {
@@ -288,7 +293,7 @@ module containerAppsEnvironment 'modules/container-apps-environment.bicep' = {
 /*
   Module to create web app containing the Docker image
   See https://azure.microsoft.com/products/container-apps
-  
+
   The Azure Container app hosts the docker container containing KM web service.
 */
 module containerAppService 'modules/container-app.bicep' = {

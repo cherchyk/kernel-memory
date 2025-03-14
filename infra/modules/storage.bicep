@@ -74,7 +74,7 @@ module module_blob_pe 'network/private-endpoint.bicep' = {
 
     serviceName_Used_for_PE: '${storageAccountName}-blob'
 
-    DNSZoneName: 'privatelink.blob.${environment().suffixes.storage}' // https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-dns
+    DNSZoneName: 'privatelink${suffix}.blob.${environment().suffixes.storage}' // https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-dns
     vnetId: vnetId
     privateEndpointSubnetId: privateEndpointSubnetId
 
@@ -95,7 +95,7 @@ module module_queue_pe 'network/private-endpoint.bicep' = {
 
     serviceName_Used_for_PE: '${storageAccountName}-queue'
 
-    DNSZoneName: 'privatelink.queue.${environment().suffixes.storage}' // https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-dns
+    DNSZoneName: 'privatelink${suffix}.queue.${environment().suffixes.storage}' // https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-dns
     vnetId: vnetId
     privateEndpointSubnetId: privateEndpointSubnetId
 
